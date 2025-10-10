@@ -1,0 +1,78 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - eproject-network
+
+  auth:
+    build: ./auth
+    container_name: eproject-auth
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/eproject
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - AUTH_PORT=3000
+    depends_on:
+      - mongodb
+    networks:
+      - eproject-network
+
+  product:
+    build: ./product
+    container_name: eproject-product
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/eproject
+      - PRODUCT_PORT=3001
+    depends_on:
+      - mongodb
+    networks:
+      - eproject-network
+
+  order:
+    build: ./order
+    container_name: eproject-order
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/eproject
+      - ORDER_PORT=3002
+    depends_on:
+      - mongodb
+    networks:
+      - eproject-network
+
+  gateway:
+    build: ./api-gateway
+    container_name: eproject-gateway
+    restart: always
+    ports:
+      - "3003:3003"
+    environment:
+      - GATEWAY_PORT=3003
+      - AUTH_SERVICE_URL=http://eproject-auth:3000
+      - PRODUCT_SERVICE_URL=http://eproject-product:3001
+      - ORDER_SERVICE_URL=http://eproject-order:3002
+    depends_on:
+      - auth
+      - product
+      - order
+    networks:
+      - eproject-network
+
+volumes:
+  mongo_data:
+
+networks:
+  eproject-network:
+    driver: bridge
